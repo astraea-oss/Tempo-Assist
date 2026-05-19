@@ -1,4 +1,4 @@
-# Tempo Forge
+# Tempo-Assist
 
 An Electron + Vite + React + Tailwind starter for reminders, alarms, and time management.
 
