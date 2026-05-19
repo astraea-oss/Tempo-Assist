@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-electron/
+out/
+android/
+ios/
+.DS_Store
+*.log
+electron.vite.config.*.mjs
+.env
+.env.local
