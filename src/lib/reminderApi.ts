@@ -27,4 +27,10 @@ export const reminderApi = {
   files: {
     audioDataUrl: (filePath: string) => window.tempo?.files.audioDataUrl(filePath) ?? Promise.resolve(filePath),
   },
+  windowControls: {
+    minimize: () => window.tempo?.windowControls.minimize() ?? Promise.resolve(),
+    toggleMaximize: () => window.tempo?.windowControls.toggleMaximize() ?? Promise.resolve(),
+    close: () => window.tempo?.windowControls.close() ?? Promise.resolve(),
+  },
 };
+

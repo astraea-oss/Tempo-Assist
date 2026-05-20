@@ -1,6 +1,7 @@
 {
-  "name": "tempo-forge",
-  "version": "0.1.0",
+  "name": "tempo-assist",
+  "productName": "Tempo Assist",
+  "version": "0.1.1",
   "private": true,
   "description": "Electron, React, and Capacitor app for reminders, alarms, and time management.",
   "main": "out/main/main.js",
@@ -8,8 +9,36 @@
     "dev": "electron-vite dev",
     "dev:web": "vite --host 0.0.0.0",
     "build": "tsc && electron-vite build",
+    "dist:win": "npm run build && electron-builder --win nsis portable",
+    "pack:win": "npm run build && electron-builder --win dir",
     "preview": "vite preview",
     "cap:sync": "npm run build && npx cap sync"
+  },
+  "build": {
+    "appId": "com.astraea.tempoassist",
+    "productName": "Tempo Assist",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "out/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
@@ -25,14 +54,15 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
+    "@swc/core": "^1.15.3",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "@types/sql.js": "^1.4.9",
-    "@swc/core": "^1.15.3",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.20",
     "electron": "^42.1.0",
+    "electron-builder": "^26.8.1",
     "electron-vite": "^5.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",

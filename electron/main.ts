@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import { createReminder, deleteReminder, listReminders, updateReminder } from "./storage/reminders";
@@ -9,10 +9,12 @@ function createWindow() {
   const window = new BrowserWindow({
     width: 1280,
     height: 820,
-    minWidth: 980,
-    minHeight: 680,
-    title: "Tempo Forge",
-    backgroundColor: "#f4f1ea",
+    minWidth: 260,
+    minHeight: 180,
+    title: "Tempo Assist",
+    frame: false,
+    autoHideMenuBar: true,
+    backgroundColor: "#080b10",
     webPreferences: {
       preload: path.join(__dirname, "../preload/preload.js"),
       contextIsolation: true,
@@ -23,7 +25,10 @@ function createWindow() {
   if (process.env.ELECTRON_RENDERER_URL) {
     window.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
-    window.loadFile(path.join(__dirname, "../../dist/index.html"));
+    const rendererPath = app.isPackaged
+      ? path.join(process.resourcesPath, "app.asar", "dist", "index.html")
+      : path.join(__dirname, "../../dist/index.html");
+    window.loadFile(rendererPath);
   }
 }
 
@@ -72,6 +77,23 @@ function registerIpc() {
       body: "Your reminder alarm pipeline is wired up.",
     }).show();
   });
+  ipcMain.handle("window:minimize", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
+  });
+  ipcMain.handle("window:toggleMaximize", (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) {
+      return;
+    }
+    if (window.isMaximized()) {
+      window.unmaximize();
+    } else {
+      window.maximize();
+    }
+  });
+  ipcMain.handle("window:close", (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.close();
+  });
 }
 
 function normalizePathInput(filePath: string) {
@@ -86,6 +108,7 @@ function normalizePathInput(filePath: string) {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   registerIpc();
   createWindow();
 
@@ -101,3 +124,6 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
+
+
+

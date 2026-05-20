@@ -22,8 +22,14 @@ const api = {
   files: {
     audioDataUrl: (filePath: string) => ipcRenderer.invoke("files:audioDataUrl", filePath) as Promise<string>,
   },
+  windowControls: {
+    minimize: () => ipcRenderer.invoke("window:minimize") as Promise<void>,
+    toggleMaximize: () => ipcRenderer.invoke("window:toggleMaximize") as Promise<void>,
+    close: () => ipcRenderer.invoke("window:close") as Promise<void>,
+  },
 };
 
 contextBridge.exposeInMainWorld("tempo", api);
 
 export type TempoApi = typeof api;
+

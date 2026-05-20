@@ -6,7 +6,11 @@ import {
   Check,
   CheckCircle2,
   Clock3,
+  Maximize2,
+  Minimize2,
+  Minus,
   RotateCcw,
+  Square,
   Trash2,
   FolderOpen,
   Music,
@@ -14,18 +18,13 @@ import {
   Plus,
   Settings,
   TimerReset,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { reminderApi } from "./lib/reminderApi";
-import type { Reminder, ReminderItemType, ReminderPriority, TempoSettings } from "./shared/types";
-
-const priorityStyles: Record<ReminderPriority, string> = {
-  low: "border-emerald-400/20 bg-emerald-400/10 text-emerald-200",
-  medium: "border-amber-300/20 bg-amber-300/10 text-amber-100",
-  high: "border-rose-300/25 bg-rose-400/10 text-rose-100",
-};
+import type { Reminder, ReminderItemType, TempoSettings } from "./shared/types";
 
 const navItems: Array<[string, LucideIcon]> = [
   ["Timeline", Bell],
@@ -45,7 +44,6 @@ const quickOffsets = [
   ["10m", 10],
   ["30m", 30],
   ["1h", 60],
-  ["Tonight", null],
 ] as const;
 
 const recurrenceOptions = [
@@ -166,12 +164,12 @@ export function App() {
   const [notes, setNotes] = useState("");
   const [date, setDate] = useState(() => dateValue(new Date()));
   const [time, setTime] = useState(() => timeValue(addMinutes(new Date(), 30)));
-  const [priority, setPriority] = useState<ReminderPriority>("medium");
   const [recurrence, setRecurrence] = useState<RecurrenceValue>("none");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [triggeredIds, setTriggeredIds] = useState<string[]>([]);
   const [now, setNow] = useState(() => Date.now());
   const [duePopup, setDuePopup] = useState<DuePopup | null>(null);
+  const [compactMode, setCompactMode] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   async function refresh() {
@@ -249,7 +247,7 @@ export function App() {
       notes,
       dueAt: combineDateTime(date, time),
       repeatRule: recurrence === "none" ? null : recurrence,
-      priority,
+      priority: "medium" as const,
       tags: [itemType],
     };
 
@@ -268,7 +266,6 @@ export function App() {
     setItemType("reminder");
     setTitle("");
     setNotes("");
-    setPriority("medium");
     setRecurrence("none");
     const next = addMinutes(new Date(), 30);
     setDate(dateValue(next));
@@ -283,7 +280,6 @@ export function App() {
     setNotes(reminder.notes);
     setDate(dateValue(due));
     setTime(timeValue(due));
-    setPriority(reminder.priority);
     setRecurrence((reminder.repeatRule as RecurrenceValue | null) ?? "none");
   }
 
@@ -390,22 +386,39 @@ export function App() {
     setDuePopup(null);
   }
 
+  if (compactMode) {
+    return (
+      <main className="min-h-screen bg-[#080b10] p-2 text-slate-100">
+        <CompactView now={now} onExit={() => setCompactMode(false)} upcoming={stats.upcoming} />
+        {duePopup ? <DueAlert onOk={acknowledgeDue} onSnooze={snoozeDue} popup={duePopup} /> : null}
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#080b10] text-slate-100">
       <div className="grid min-h-screen grid-cols-[220px_1fr] gap-4 p-4">
         <aside className="flex flex-col justify-between rounded-lg border border-white/10 bg-[#0f141d] p-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex cursor-move items-center gap-3 [-webkit-app-region:drag]">
               <div className="grid h-10 w-10 place-items-center rounded-md bg-cyan-300 text-slate-950">
                 <AlarmClock size={22} />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Tempo Forge</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-slate-500">Tempo Assist</p>
                 <h1 className="text-lg font-semibold">Time deck</h1>
               </div>
             </div>
 
-            <nav className="mt-6 space-y-1">
+            <nav className="mt-6 space-y-1 [-webkit-app-region:no-drag]">
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-slate-300 transition hover:bg-white/7 hover:text-white"
+                onClick={() => setCompactMode(true)}
+                type="button"
+              >
+                <Minimize2 size={17} />
+                <span>Compact</span>
+              </button>
               {navItems.map(([label, Icon]) => (
                 <button
                   className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition hover:bg-white/7 hover:text-white ${
@@ -423,7 +436,7 @@ export function App() {
             </nav>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 [-webkit-app-region:no-drag]">
             {stats.upcoming.length > 0 ? (
               stats.upcoming.map(({ item, occurrence }) => (
                 <div className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-center" key={item.id}>
@@ -467,7 +480,7 @@ export function App() {
               />
             </section>
           ) : activeView === "timeline" ? (
-          <div className="grid grid-cols-[minmax(0,1fr)_340px] gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_250px] gap-4">
             <section className="rounded-lg border border-white/10 bg-[#0f141d] p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -476,7 +489,7 @@ export function App() {
                 </div>
                 <button
                   className="grid h-9 w-9 place-items-center rounded-md bg-white/10 text-cyan-200 hover:bg-white/15"
-                  onClick={() => reminderApi.testAlarm("Tempo Forge")}
+                  onClick={() => reminderApi.testAlarm("Tempo Assist")}
                   title="Test alarm"
                 >
                   <Bell size={17} />
@@ -495,24 +508,18 @@ export function App() {
 
             <div className="grid content-start gap-3">
               <div className="rounded-lg border border-white/10 bg-[#111822] px-4 py-3 text-center">
-                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Today</p>
-                <p className="mt-1 text-lg font-semibold text-slate-100">{format(new Date(now), "d MMMM yyyy")}</p>
+                <p className="text-lg font-semibold text-slate-100">{format(new Date(now), "d MMMM yyyy")}</p>
+                <p className="mt-1 font-mono text-2xl font-semibold text-cyan-200">{format(new Date(now), "HH:mm:ss")}</p>
               </div>
 
             <form className="rounded-lg border border-white/10 bg-[#111822] p-4" onSubmit={submit}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {editingId ? <Pencil size={18} /> : <Plus size={18} />}
-                  <h2 className="text-lg font-semibold">{editingId ? "Edit" : "Create"}</h2>
-                </div>
-                {editingId ? (
-                  <button className="text-xs text-slate-400 hover:text-white" onClick={resetForm} type="button">
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
+              {editingId ? (
+                <button className="mb-3 text-xs text-slate-400 hover:text-white" onClick={resetForm} type="button">
+                  Cancel edit
+                </button>
+              ) : null}
 
-              <div className="mt-4 grid grid-cols-2 gap-2 rounded-md bg-slate-950 p-1">
+              <div className="grid grid-cols-2 gap-2 rounded-md bg-slate-950 p-1">
                 {(["reminder", "alarm"] as ReminderItemType[]).map((option) => (
                   <button
                     className={`rounded px-3 py-2 text-sm capitalize ${
@@ -537,7 +544,7 @@ export function App() {
                 />
               </label>
 
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid gap-2">
                 <label className="block text-xs font-medium text-slate-300">
                   Date
                   <input
@@ -558,7 +565,7 @@ export function App() {
                 </label>
               </div>
 
-              <div className="mt-3 grid grid-cols-4 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 {quickOffsets.map(([label, offset]) => (
                   <button
                     className="rounded-md border border-white/10 px-2 py-2 text-xs text-slate-300 hover:bg-white/10 hover:text-white"
@@ -596,26 +603,9 @@ export function App() {
                 />
               </label>
 
-              <div className="mt-3">
-                <p className="text-xs font-medium text-slate-300">Priority</p>
-                <div className="mt-1 grid grid-cols-3 gap-2">
-                  {(["low", "medium", "high"] as ReminderPriority[]).map((option) => (
-                    <button
-                      className={`rounded-md border px-2 py-2 text-xs capitalize ${
-                        priority === option ? "border-cyan-300 bg-cyan-300 text-slate-950" : "border-white/10 text-slate-400"
-                      }`}
-                      key={option}
-                      onClick={() => setPriority(option)}
-                      type="button"
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button className="mt-4 w-full rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950" type="submit">
-                {editingId ? "Save changes" : `Add ${itemType}`}
+              <button className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-cyan-300 px-4 py-2.5 text-sm font-semibold text-slate-950" type="submit">
+                {editingId ? <Pencil size={16} /> : <Plus size={16} />}
+                {editingId ? "Save changes" : itemType === "alarm" ? "Add alarm" : "Add reminder"}
               </button>
             </form>
             </div>
@@ -644,6 +634,62 @@ function viewForLabel(label: string): ViewName {
     return "completed";
   }
   return "timeline";
+}
+
+function CompactView({
+  now,
+  onExit,
+  upcoming,
+}: {
+  now: number;
+  onExit: () => void;
+  upcoming: Array<{ item: Reminder; occurrence: Date }>;
+}) {
+  return (
+    <section className="mx-auto flex min-h-[120px] w-full max-w-[420px] flex-col gap-2">
+      <div className="flex cursor-move items-center justify-between gap-2 rounded-md border border-white/10 bg-[#0f141d] px-2 py-1.5 [-webkit-app-region:drag]">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <AlarmClock className="shrink-0 text-cyan-300" size={14} />
+          <span className="truncate text-xs font-semibold uppercase tracking-[0.12em] text-cyan-300">Upcoming</span>
+        </div>
+        <button
+          className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-white/10 text-slate-300 hover:bg-white/10 [-webkit-app-region:no-drag]"
+          onClick={onExit}
+          title="Exit compact view"
+          type="button"
+        >
+          <Maximize2 size={15} />
+        </button>
+      </div>
+
+      {upcoming.length > 0 ? (
+        upcoming.map(({ item, occurrence }) => (
+          <article
+            className="grid min-h-[58px] min-w-0 grid-cols-[38px_minmax(0,1fr)] items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] p-2"
+            key={`${item.id}:${occurrence.toISOString()}`}
+          >
+            <div className="flex h-10 w-[38px] items-center justify-center rounded border border-cyan-300/20 bg-cyan-300/10 text-center text-[10px] font-bold uppercase leading-none text-cyan-100">
+              {compactTypeLabel(item.itemType)}
+            </div>
+            <div className="flex min-w-0 flex-col justify-center overflow-hidden">
+              <p className="truncate text-[11px] font-semibold leading-4 text-slate-100">{item.title}</p>
+              <p className="truncate font-mono text-[13px] font-semibold leading-4 text-cyan-200">
+                {countdownLabel(occurrence.toISOString(), now)}
+              </p>
+            </div>
+          </article>
+        ))
+      ) : (
+        <div className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-center text-xs text-slate-400">
+          Nothing scheduled
+        </div>
+      )}
+    </section>
+  );
+}
+
+function compactTypeLabel(itemType: ReminderItemType) {
+  return itemType === "alarm" ? "ALR" : "REM";
 }
 
 function PlaceholderPanel({ title }: { title: string }) {
@@ -733,7 +779,7 @@ function ScheduleList({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${priorityStyles[reminder.priority]}`}>
+                <span className="rounded border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-100">
                   {reminder.itemType}
                 </span>
                 {reminder.repeatRule ? (
@@ -970,3 +1016,10 @@ function VolumeRow({
     </div>
   );
 }
+
+
+
+
+
+
+
